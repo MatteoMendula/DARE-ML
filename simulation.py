@@ -1,6 +1,5 @@
 import argparse
 import random
-import matplotlib.pyplot as plt
 from colorama import Fore, init
 from model.gpu import GPU
 from model.policy import Policy
