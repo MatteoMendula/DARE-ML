@@ -1,0 +1,7 @@
+__pycache__/
+data/
+output/
+flan-t5-base/
+flan-t5-large/
+flan-t5-small/
+bart-small/
