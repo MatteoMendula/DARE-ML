@@ -9,11 +9,11 @@ import os
 from utils import prompt_instruction_format, LossThresholdCallback
 
 
-data_files = {'train':'./data/train.csv','test':'./data/test.csv'}
+data_files = {'train':'../data/train.csv','test':'../data/test.csv'}
 
 dataset = load_dataset('csv',data_files=data_files)
 
-model_name = "google/flan-t5-small"
+model_name = "lucadiliello/flan-t5-base"
 # google/flan-t5-base
 # google/flan-t5-small
 # lucadiliello/bart-small
@@ -27,7 +27,7 @@ save_model_name = model_name.split("/")[1]
 # model.save_pretrained(f'{save_model_name}/model')
 
 # Load the model from the model_name/model directory
-model = AutoModelForSeq2SeqLM.from_pretrained(f'{save_model_name}/model')
+model = AutoModelForSeq2SeqLM.from_pretrained(f'../{save_model_name}/model')
 print("Loaded model!")
 
 #Makes training faster but a little less accurate 
@@ -39,7 +39,7 @@ model.config.pretraining_tp = 1
 # tokenizer.save_pretrained(f'{save_model_name}/tokenizer')
 
 # Load the tokenizer from the model_name/tokenizer directory
-tokenizer = AutoTokenizer.from_pretrained(f'{save_model_name}/tokenizer')
+tokenizer = AutoTokenizer.from_pretrained(f'../{save_model_name}/tokenizer')
 print("Loaded tokenizer!")
 
 #setting padding instructions for tokenizer
