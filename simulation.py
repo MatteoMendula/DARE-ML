@@ -1,5 +1,7 @@
 import argparse
 import random
+import time
+from threading import Thread
 from colorama import Fore, init
 from model.gpu import GPU
 from model.policy import Policy
@@ -8,17 +10,18 @@ from model.task_thread import TaskThread
 from model.user import User
 from model.queue import Queue
 from model.task import Task
-import time
+from model.user_thread import UserThread
 
-from plots.gantt_executions import generate_gantt_chart
+from plots.gantt_executions import generate_gantt_gantt_executions
+from plots.gantt_arrival_ending_time import generate_gantt_arrival_ending_time
 
 # Initialize colorama
 init(autoreset=True)
 
 MAX_NUM_TASKS = 10
 MAX_NUM_TASK_ID = 1000
-MAX_TIME = 10000000
-MIN_TIME = 10
+MIN_TIME = 1
+MAX_TIME = 3
 
 def main(args):
     random.seed(args.seed)
@@ -30,17 +33,22 @@ def main(args):
 
     # Define model properties
     model_properties = {
-        "google/flan-t5-base": {"training_time": 0.06 * 60, "memory_required": 24},
-        "google/flan-t5-small": {"training_time": 0.006 * 60, "memory_required": 11},
-        "lucadiliello/bart-small": {"training_time": 0.0006 * 60, "memory_required": 11}
+        "google/flan-t5-base": {"training_time": 10, "memory_required": 24},
+        "google/flan-t5-small": {"training_time": 5, "memory_required": 11},
+        "lucadiliello/bart-small": {"training_time": 1, "memory_required": 11}
     }
 
     # Create users and their tasks
     users = []
+    user_threads = []
     all_tasks = []
+    task_arrival_times = {}  # Dictionary to store the arrival times of each task
+    task_records = []  # List to store task allocations for Gantt charts
+
     for user_id in range(1, args.number_of_users + 1):
         user = User(user_id=user_id)
         num_tasks = random.randint(1, MAX_NUM_TASKS)
+        user_tasks = []
         for t in range(num_tasks):
             task_id = f"task_{t}_of_user_{user_id}"
             model_name = random.choice(list(model_properties.keys()))
@@ -50,32 +58,29 @@ def main(args):
                 task_id=task_id,
                 model_name=model_name,
                 training_time=training_time,
-                memory_required=memory_required
+                memory_required=memory_required,
+                user_id=user_id
             )
             # Assign a time for when this task will be requested by the user
             time_of_asking_the_task = random.randint(MIN_TIME, MAX_TIME)
             user.add_task(time_of_asking_the_task, task)
+            user_tasks.append((time_of_asking_the_task, task))
             all_tasks.append((time_of_asking_the_task, task))
-        users.append(user)
 
-    # Sort all tasks by `time_of_asking_the_task`
-    all_tasks.sort(key=lambda x: x[0])
+        # Create a thread for each user with their tasks
+        user_thread = UserThread(user=user, task_queue=task_queue, task_list=user_tasks)
+        user_threads.append(user_thread)
 
     # Initialize Policy
     policy = Policy(policy_type=args.policy, task_queue=task_queue)
 
-    # Simulation clock and task processing
+    # Start user threads to request tasks
+    for u in user_threads:
+        u.start()
+
+    # Process tasks as they arrive in the task queue
     threads = []
-    task_index = 0
-    task_records = []  # List to store task allocations for Gantt chart
-
-    while task_index < len(all_tasks) or task_queue.tasks:
-        # Add tasks to the queue that are due at the current time
-        while task_index < len(all_tasks):
-            _, task = all_tasks[task_index]
-            task_queue.add_task(task)
-            task_index += 1
-
+    while any(thread.is_alive() for thread in user_threads) or task_queue.tasks:
         # Get the next task based on the scheduling policy
         current_task = policy.get_next_task()
         if current_task:
@@ -83,9 +88,10 @@ def main(args):
                 # Track task start and end time for Gantt chart
                 start_time = time.time()
                 end_time = start_time + current_task.training_time
-                task_records.append((current_task.assigned_gpu.id, current_task.id, start_time, end_time))
 
-                
+                # Add task details to records for Gantt chart
+                task_records.append((current_task.assigned_gpu.id, current_task.arrival_time, start_time, end_time, current_task.training_time, current_task.user_id))
+
                 # Start a thread for the task
                 thread = TaskThread(current_task, scheduler)
                 thread.start()
@@ -93,16 +99,19 @@ def main(args):
             else:
                 # Re-add the task to the queue if no GPU is available
                 task_queue.add_task(current_task)
-        # else:
-        #     print(Fore.YELLOW + "No tasks ready for processing at the moment.")
 
     # Wait for all threads to complete
     for thread in threads:
         thread.join()
 
-    # Generate Gantt chart
-    generate_gantt_chart(task_records, gpus)
+    # Wait for all user threads to complete
+    for user_thread in user_threads:
+        user_thread.join()
 
+    print(task_records)
+    # Generate Gantt charts
+    generate_gantt_gantt_executions(task_records, gpus=gpus)
+    generate_gantt_arrival_ending_time(task_records=task_records, gpus=gpus)
 
 
 if __name__ == "__main__":
