@@ -1,4 +1,4 @@
-__pycache__/
+*/__pycache__/
 data/
 output/
 flan-t5-base/
@@ -7,3 +7,4 @@ flan-t5-small/
 bart-small/
 LLM_finetuning/__pycache__/
 LLM_finetuning/output/
+.vscode/
