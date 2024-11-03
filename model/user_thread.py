@@ -18,7 +18,6 @@ class UserThread(threading.Thread):
             # Get the earliest task request time
             time_of_asking = min(self.user.map_task.keys())
             task = self.user.map_task.pop(time_of_asking)  # Retrieve and remove the task from map_task
-
             # Wait until the specified time to request the task
             time.sleep(time_of_asking)
             print(Fore.CYAN + f"User {self.user.id} is requesting {task.id} at time {time_of_asking}\n")
