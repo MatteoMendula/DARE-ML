@@ -8,11 +8,10 @@ init(autoreset=True)
 
 class UserThread(threading.Thread):
     """Thread for each user that waits and adds tasks at specified times."""
-    def __init__(self, user, task_queue, task_list):
+    def __init__(self, user, task_queue):
         super().__init__()
         self.user: User = user
         self.task_queue = task_queue
-        self.task_list = task_list
 
     def run(self):
         while self.user.map_task:

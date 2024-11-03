@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
+from plots import analysis
 
-def generate_gantt_gantt_executions(task_records, gpus):
+def generate_gantt_gantt_executions(task_records):
+    gpus=analysis.get_gpus
+
     fig, ax = plt.subplots(figsize=(20, 6))
 
     # Determine min and max durations for color scaling

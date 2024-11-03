@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects  # Import path effects for text outline
+from plots import analysis
 
 
-def generate_gantt_arrival_ending_time(task_records, gpus):
+def generate_gantt_arrival_ending_time(task_records):
+    gpus=analysis.get_gpus
+
     wait_color = 'green'  
     burst_color = 'red'   
 

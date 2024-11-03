@@ -17,10 +17,6 @@ import json  # Import json to handle saving dictionaries
 init(autoreset=True)
 
 def main(args):
-    max_num_tasks = args.tasks
-    min_time = args.min_time  # Set from command-line arguments
-    max_time = args.max_time  # Set from command-line arguments
-
     # Dictionary to store random numbers for reproducibility
     random_numbers = {}
 
@@ -28,6 +24,7 @@ def main(args):
     gpus = [GPU(gpu_id=i + 1, memory_size=memory) for i, memory in enumerate(args.gpus)]
     scheduler = Scheduler(gpus=gpus)
     task_queue = Queue()
+
 
     # Scaling factor to adjust training times down to smallest unit possible
     smallest_time = 0.02 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
@@ -52,19 +49,19 @@ def main(args):
     user_threads = []
     task_records = []  # List to store task allocations for Gantt charts
 
-    # Use built-in random generator
-    random.seed(10)
+    # Use random variables read from input file
+    if args.random_file:
+        # Load random numbers from the specified file
+        with open(args.random_file, 'r') as f:
+            random_numbers = json.load(f)  # Load the dictionary from the file
 
     for user_id in range(1, args.users + 1):
         user = User(user_id=user_id)
-        num_tasks = random.randint(1, max_num_tasks)  # Get random number of tasks
-        random_numbers[f'user_{user_id}_num_tasks'] = num_tasks  # Store the number of tasks
+        num_tasks= random_numbers[f'user_{user_id}_num_tasks']
 
         for t in range(num_tasks):
             task_id = f"task_{t}_of_user_{user_id}"
-            model_name = random.choice(list(model_properties.keys()))
-            # Store model name
-            random_numbers[f'task_{task_id}_model_name'] = model_name
+            model_name=random_numbers[f'task_{task_id}_model_name']
             training_time = model_properties[model_name]["training_time"]
             memory_required = model_properties[model_name]["memory_required"]
 
@@ -77,8 +74,7 @@ def main(args):
                 user_id=user_id
             )
             # Assign a time for when this task will be requested by the user
-            time_of_asking_the_task = random.uniform(min_time, max_time)
-            random_numbers[f'task_{task_id}_request_time'] = time_of_asking_the_task  # Store the task request time
+            time_of_asking_the_task=random_numbers[f'task_{task_id}_request_time']
             user.add_task(time_of_asking_the_task, task)
 
         # Create a thread for each user with their tasks
@@ -139,12 +135,6 @@ def main(args):
         writer.writeheader()  # Write header
         writer.writerows(task_records)  # Write each record
 
-    # Save random numbers to a file as a dictionary
-    random_filename = f"results/random_numbers_users_{args.users}_tasks_{args.tasks}_seed_{10}.json"
-    with open(random_filename, "w") as random_file:
-        json.dump(random_numbers, random_file, indent=4)  # Save the dictionary as a JSON file
-
-
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run a GPU Scheduler Simulation for ML Tasks")
@@ -161,6 +151,7 @@ if __name__ == "__main__":
     parser.add_argument('--min-time', type=float, required=True, default=1, help="Minimum task request time interval")
     parser.add_argument('--max-time', type=float, required=True, default=2, help="Maximum task request time interval")
     parser.add_argument('--policy-dare', type=bool, default=False, help="Use Dare policy or not")
+    parser.add_argument('--random-file', type=str, help="File path to load random numbers from")
 
     args = parser.parse_args()
     main(args)
