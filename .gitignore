@@ -8,3 +8,5 @@ bart-small/
 LLM_finetuning/__pycache__/
 LLM_finetuning/output/
 .vscode/
+*/venv/
+venv/*
