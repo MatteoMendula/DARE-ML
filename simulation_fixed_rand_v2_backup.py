@@ -17,10 +17,6 @@ import json  # Import json to handle saving dictionaries
 init(autoreset=True)
 
 def main(args):
-    max_num_tasks = args.tasks
-    min_time = args.min_time  # Set from command-line arguments
-    max_time = args.max_time  # Set from command-line arguments
-
     # Dictionary to store random numbers for reproducibility
     random_numbers = {}
 
@@ -29,57 +25,78 @@ def main(args):
     scheduler = Scheduler(gpus=gpus)
     task_queue = Queue()
 
+
     # Scaling factor to adjust training times down to smallest unit possible
-    smallest_time = 0.02 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
+    # smallest_time = 0.02 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
+    smallest_time = 0.2 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
     original_smallest_time = 1154.37700009346  # Smallest original time in each policy
     scaling_factor = smallest_time / original_smallest_time
 
     # Define model properties
-    if args.policy_dare:
-        model_properties = {
-            "lucadiliello/bart-small": {"training_time": 2228.8450000286102 * scaling_factor, "memory_required": 11},
-            "google/flan-t5-base": {"training_time": 1584.233999967575 * scaling_factor, "memory_required": 24},
-            "google/flan-t5-small": {"training_time": 1154.37700009346 * scaling_factor, "memory_required": 11},
-        }
-    else:
-        model_properties = {
-            "lucadiliello/bart-small": {"training_time": 47806.575000047684 * scaling_factor, "memory_required": 11},
-            "google/flan-t5-base": {"training_time": 141987.64184201873 * scaling_factor, "memory_required": 24},
-            "google/flan-t5-small": {"training_time": 61417.08800005913 * scaling_factor, "memory_required": 11},
-        }
+    model_properties_dare = {
+        "lucadiliello/bart-small": {"training_time": 2228.8450000286102 * scaling_factor, "memory_required": 11},
+        "google/flan-t5-base": {"training_time": 1584.233999967575 * scaling_factor, "memory_required": 24},
+        "google/flan-t5-small": {"training_time": 1154.37700009346 * scaling_factor, "memory_required": 11},
+    }
+    model_properties_no_dare = {
+        "lucadiliello/bart-small": {"training_time": 47806.575000047684 * scaling_factor, "memory_required": 11},
+        "google/flan-t5-base": {"training_time": 141987.64184201873 * scaling_factor, "memory_required": 24},
+        "google/flan-t5-small": {"training_time": 61417.08800005913 * scaling_factor, "memory_required": 11},
+    }
 
     # Create users and their tasks
     user_threads = []
     task_records = []  # List to store task allocations for Gantt charts
 
-    # Use built-in random generator
-    random.seed(10)
+    # Use random variables read from input file
+    if args.random_file:
+        # Load random numbers from the specified file
+        with open(args.random_file, 'r') as f:
+            random_numbers = json.load(f)  # Load the dictionary from the file
 
     for user_id in range(1, args.users + 1):
         user = User(user_id=user_id)
-        num_tasks = random.randint(1, max_num_tasks)  # Get random number of tasks
-        random_numbers[f'user_{user_id}_num_tasks'] = num_tasks  # Store the number of tasks
+        num_tasks= random_numbers[f'user_{user_id}_num_tasks']
 
         for t in range(num_tasks):
             task_id = f"task_{t}_of_user_{user_id}"
-            model_name = random.choice(list(model_properties.keys()))
-            # Store model name
-            random_numbers[f'task_{task_id}_model_name'] = model_name
-            training_time = model_properties[model_name]["training_time"]
-            memory_required = model_properties[model_name]["memory_required"]
+            model_name=random_numbers[f'task_{task_id}_model_name']
+            
+            if not args.policy_dare:
+                model_properties = model_properties_no_dare
+                training_time = model_properties[model_name]["training_time"]
+                memory_required = model_properties[model_name]["memory_required"]
 
+                task = Task(
+                    task_id=task_id,
+                    model_name=model_name,
+                    training_time=training_time,
+                    memory_required=memory_required,
+                    user_id=user_id
+                )
+                # Assign a time for when this task will be requested by the user
+                time_of_asking_the_task=random_numbers[f'task_{task_id}_request_time']
+                user.add_task(time_of_asking_the_task, task)
 
-            task = Task(
-                task_id=task_id,
-                model_name=model_name,
-                training_time=training_time,
-                memory_required=memory_required,
-                user_id=user_id
-            )
-            # Assign a time for when this task will be requested by the user
-            time_of_asking_the_task = random.uniform(min_time, max_time)
-            random_numbers[f'task_{task_id}_request_time'] = time_of_asking_the_task  # Store the task request time
-            user.add_task(time_of_asking_the_task, task)
+            # DARE case
+            else:
+                n_retrains = int(model_properties_no_dare[model_name]["training_time"] // model_properties_dare[model_name]["training_time"])
+                for nr in range(n_retrains):
+                    model_properties = model_properties_dare
+                    training_time = model_properties[model_name]["training_time"]
+                    memory_required = model_properties[model_name]["memory_required"]
+
+                    task = Task(
+                        task_id=f"{task_id}_retrain_{nr}",
+                        model_name=model_name,
+                        training_time=training_time,
+                        memory_required=memory_required,
+                        user_id=user_id
+                    )
+                    # Assign a time for when this task will be requested by the user
+                    time_of_asking_the_task=random_numbers[f'task_{task_id}_request_time']+1e-17*nr
+                    user.add_task(time_of_asking_the_task, task)
+                # print("user tasks",user.id,n_retrains, len(user.map_task))
 
         # Create a thread for each user with their tasks
         user_thread = UserThread(user=user, task_queue=task_queue)
@@ -103,6 +120,10 @@ def main(args):
                 start_time = time.time()
                 end_time = start_time + current_task.training_time
 
+                task_retrain = -1
+                if len(current_task.id.split("_retrain_")) > 1:
+                    task_retrain = current_task.id.split("_retrain_")[1]
+
                 # Add task details to records for analysis
                 task_records.append({
                     "GPU_ID": current_task.assigned_gpu.id,
@@ -112,6 +133,8 @@ def main(args):
                     "Training_Time": current_task.training_time,
                     "User_ID": current_task.user_id,
                     "Model_Name": current_task.model_name,
+                    "Task_Id": current_task.id.split("_retrain_")[0],
+                    "Task_Retrain": task_retrain
                 })
 
                 # Start a thread for the task
@@ -131,19 +154,13 @@ def main(args):
         user_thread.join()
 
     # Generate a filename based on input parameters
-    filename = f"results/task_records_users_{args.users}_tasks_{args.tasks}_seed_{10}_scheduling_{args.scheduling_type}_range_{args.min_time}_{args.max_time}_dare_{str(args.policy_dare)}.csv"
+    filename = f"results/task_records_users_{args.users}_tasks_{args.tasks}_seed_{10}_scheduling_{args.scheduling_type}_range_{args.min_time}_{args.max_time}_dare_{str(args.policy_dare)}_v2.csv"
     
     # Save task_records as a CSV file
     with open(filename, "w", newline="") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=["GPU_ID", "Arrival_Time", "Start_Time", "End_Time", "Training_Time", "User_ID", "Model_Name"])
+        writer = csv.DictWriter(csv_file, fieldnames=["GPU_ID", "Arrival_Time", "Start_Time", "End_Time", "Training_Time", "User_ID", "Model_Name", "Task_Id", "Task_Retrain"])
         writer.writeheader()  # Write header
         writer.writerows(task_records)  # Write each record
-
-    # Save random numbers to a file as a dictionary
-    random_filename = f"results/random_numbers_users_{args.users}_tasks_{args.tasks}_seed_{10}.json"
-    with open(random_filename, "w") as random_file:
-        json.dump(random_numbers, random_file, indent=4)  # Save the dictionary as a JSON file
-
 
 if __name__ == "__main__":
     # Parse command-line arguments
@@ -161,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--min-time', type=float, required=True, default=1, help="Minimum task request time interval")
     parser.add_argument('--max-time', type=float, required=True, default=2, help="Maximum task request time interval")
     parser.add_argument('--policy-dare', type=bool, default=False, help="Use Dare policy or not")
+    parser.add_argument('--random-file', type=str, help="File path to load random numbers from")
 
     args = parser.parse_args()
     main(args)
