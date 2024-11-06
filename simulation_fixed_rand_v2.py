@@ -116,6 +116,28 @@ def main(args):
 
             # DARE case
             else:
+
+                # remaining_time = model_properties_no_dare[model_name]["training_time"]
+                # memory_required = model_properties_dare[model_name]["memory_required"]
+                # index = 1
+                # this_training_time = model_properties_dare[model_name]["training_time"] * (index ** 1.1)
+                # while remaining_time > 0:
+                #     task = Task(
+                #         task_id=f"{task_id}_retrain_{index-1}",
+                #         model_name=model_name,
+                #         training_time=this_training_time,
+                #         memory_required=memory_required,
+                #         user_id=user_id
+                #     )
+                #     # Assign a time for when this task will be requested by the user
+                #     time_of_asking_the_task=random_numbers[f'task_{task_id}_request_time'] +1e-17*index
+                #     user.add_task(time_of_asking_the_task, task)
+
+                #     remaining_time -= this_training_time
+                #     index += 1
+
+                
+
                 n_retrains = int(model_properties_no_dare[model_name]["training_time"] // model_properties_dare[model_name]["training_time"])
                 for nr in range(n_retrains):
                     model_properties = model_properties_dare
