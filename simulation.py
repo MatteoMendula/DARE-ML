@@ -48,6 +48,8 @@ def main(args):
             "google/flan-t5-small": {"training_time": 61417.08800005913 * scaling_factor, "memory_required": 11},
         }
 
+    SESSION_DURATION = 14 * 60 * 60 * scaling_factor
+
     # Create users and their tasks
     user_threads = []
     task_records = []  # List to store task allocations for Gantt charts
@@ -115,7 +117,7 @@ def main(args):
                 })
 
                 # Start a thread for the task
-                thread = TaskThread(current_task, scheduler)
+                thread = TaskThread(current_task, scheduler, SESSION_DURATION if args.session else 0)
                 thread.start()
                 threads.append(thread)
             else:
@@ -161,6 +163,7 @@ if __name__ == "__main__":
     parser.add_argument('--min-time', type=float, required=True, default=1, help="Minimum task request time interval")
     parser.add_argument('--max-time', type=float, required=True, default=2, help="Maximum task request time interval")
     parser.add_argument('--policy-dare', type=bool, default=False, help="Use Dare policy or not")
+    parser.add_argument('--session', type=bool, default=False, help="Use Dare policy or not")
 
     args = parser.parse_args()
     main(args)

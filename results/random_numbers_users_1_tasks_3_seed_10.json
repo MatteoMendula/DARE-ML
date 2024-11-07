@@ -1,0 +1,9 @@
+{
+    "user_1_num_tasks": 3,
+    "task_task_0_of_user_1_model_name": "lucadiliello/bart-small",
+    "task_task_0_of_user_1_request_time": 0.04860001492076032,
+    "task_task_1_of_user_1_model_name": "google/flan-t5-small",
+    "task_task_1_of_user_1_request_time": 0.011334920142209833,
+    "task_task_2_of_user_1_model_name": "google/flan-t5-base",
+    "task_task_2_of_user_1_request_time": 0.08319891262215881
+}
