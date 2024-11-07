@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 from matplotlib.patches import Patch
 
+smallest_time = 0.2 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
+original_smallest_time = 1154.37700009346  # Smallest original time in each policy
+scaling_factor = smallest_time / original_smallest_time
 
 def load_task_records(file_path):
     """Load task records from a CSV file."""
@@ -240,3 +243,58 @@ def plot_waiting_times(task_records):
     ax.grid(axis='y')
     fig.tight_layout()
     plt.show()
+
+def calc_tot_energy_from_df(df, profiling = False):
+    BASE_MEAN_mW = 378.8556695697469
+
+    SMALL_MEAN_mW = 93.54626298542978
+
+    BART_MEAN_mW = 93.95008267753535
+
+    # check if Task_Retrain column contains -1 values
+    is_retrain = -1 not in list(df["Task_Retrain"].unique())
+
+    df_base = df[df["Model_Name"] == "google/flan-t5-base"]
+    df_small = df[df["Model_Name"] == "google/flan-t5-small"]
+    df_bart = df[df["Model_Name"] == "lucadiliello/bart-small"]
+
+    tot_base_training_time = df_base["Training_Time"].sum()
+    tot_small_training_time = df_small["Training_Time"].sum()
+    tot_bart_training_time = df_bart["Training_Time"].sum()
+
+    tot_base_energy = (BASE_MEAN_mW * tot_base_training_time) / 3600
+    tot_small_energy = (SMALL_MEAN_mW * tot_small_training_time) / 3600
+    tot_bart_energy = (BART_MEAN_mW * tot_bart_training_time) / 3600
+
+    if is_retrain and profiling:
+        tot_base_energy = tot_base_energy / 92.70503491796818
+        tot_small_energy = tot_small_energy / 21.795236303013805
+        tot_bart_energy = tot_bart_energy / 53.371237007832384
+
+    return (tot_base_energy, tot_small_energy, tot_bart_energy)
+
+def parse_seconds_to_hours(seconds):
+    hours = seconds / 3600
+    return hours
+
+def gpus_usage(df, profiling = False):
+
+    is_retrain = -1 not in list(df["Task_Retrain"].unique())
+
+    gpus_usage = []
+    for gpu_id in range(1, 8):
+        gpu_df = df[df["GPU_ID"] == gpu_id]
+        gpu_usage_base = gpu_df[df["Model_Name"] == "google/flan-t5-base"]["Training_Time"].sum()
+        gpu_usage_small = gpu_df[df["Model_Name"] == "google/flan-t5-small"]["Training_Time"].sum()
+        gpu_usage_bart = gpu_df[df["Model_Name"] == "lucadiliello/bart-small"]["Training_Time"].sum()
+
+        if is_retrain and profiling:
+            gpu_usage_base = gpu_usage_base / 92.70503491796818
+            gpu_usage_small = gpu_usage_small / 21.795236303013805
+            gpu_usage_bart = gpu_usage_bart / 53.371237007832384
+
+        gpus_usage.append(gpu_usage_base + gpu_usage_small + gpu_usage_bart)
+
+    
+    return gpus_usage
+        

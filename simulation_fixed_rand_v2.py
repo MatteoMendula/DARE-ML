@@ -13,6 +13,8 @@ from model.user_thread import UserThread
 import csv
 import json  # Import json to handle saving dictionaries
 
+from plots.utils import *
+
 # Initialize colorama
 init(autoreset=True)
 
@@ -28,9 +30,6 @@ def main(args):
 
     # Scaling factor to adjust training times down to smallest unit possible
     # smallest_time = 0.02 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
-    smallest_time = 0.2 # Smallest desired training time (e.g., set to 1 unit for fastest simulation)
-    original_smallest_time = 1154.37700009346  # Smallest original time in each policy
-    scaling_factor = smallest_time / original_smallest_time
 
     # Define model properties
     model_properties_dare = {
