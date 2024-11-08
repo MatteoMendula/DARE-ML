@@ -12,20 +12,24 @@ class LossThresholdCallback(TrainerCallback):
         # Access evaluation metrics
         metrics = kwargs.get("metrics", {})
         eval_loss = metrics.get("eval_loss")
+
+        # save eval_loss to file
+        with open(os.path.join(self.output_dir, "eval_loss.txt"), "a") as f:
+            f.write(f"{eval_loss}\n")
         
-        # Check if the evaluation loss is below the threshold
-        if eval_loss and eval_loss < self.threshold:
-            print(f"Stopping training early as eval_loss {eval_loss} < threshold {self.threshold}")
-            control.should_training_stop = True  # Signal trainer to stop
+        # # Check if the evaluation loss is below the threshold
+        # if eval_loss and eval_loss < self.threshold:
+        #     print(f"Stopping training early as eval_loss {eval_loss} < threshold {self.threshold}")
+        #     control.should_training_stop = True  # Signal trainer to stop
 
-            # Save model checkpoint manually
-            save_path = os.path.join(self.output_dir, f"checkpoint-early-stop")
-            self.model.save_pretrained(save_path)
-            self.tokenizer.save_pretrained(save_path)
-            print(f"Checkpoint saved at {save_path} due to early stopping.")
+        #     # Save model checkpoint manually
+        #     save_path = os.path.join(self.output_dir, f"checkpoint-early-stop")
+        #     self.model.save_pretrained(save_path)
+        #     self.tokenizer.save_pretrained(save_path)
+        #     print(f"Checkpoint saved at {save_path} due to early stopping.")
 
-        else:
-            print(f"Eval loss {eval_loss} is not below threshold {self.threshold}. Continuing training.")
+        # else:
+        #     print(f"Eval loss {eval_loss} is not below threshold {self.threshold}. Continuing training.")
 
 
 def prompt_instruction_format(sample):

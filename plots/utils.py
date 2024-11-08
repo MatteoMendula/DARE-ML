@@ -109,7 +109,7 @@ def get_gpus(task_records):
 
     return gpu_ids
 
-def generate_gantt_gantt_executions(task_records):
+def generate_gantt_gantt_executions(task_records, file_path):
     gpus = get_gpus(task_records)
     fig, ax = plt.subplots(figsize=(20, 6))
 
@@ -145,8 +145,8 @@ def generate_gantt_gantt_executions(task_records):
     # Plot each task on the Gantt chart
     for _, row in task_records.iterrows():
         gpu_id = row['GPU_ID']
-        start = row['Start_Time'] - min_start_time
-        duration = row['Training_Time']
+        start = parse_seconds_to_hours(row['Start_Time'] - min_start_time) / scaling_factor
+        duration = parse_seconds_to_hours(row['Training_Time']) / scaling_factor
         name = row['Model_Name']
         color, hatch = get_color(name)
 
@@ -155,8 +155,18 @@ def generate_gantt_gantt_executions(task_records):
     # Configure chart
     ax.set_yticks(gpus)
     ax.set_yticklabels([f"GPU {gpu}" for gpu in gpus])
-    ax.set_xlabel("Time")
-    ax.set_title("Gantt Chart of Task Allocation on GPUs")
+    ax.set_xticks([20, 40, 60, 80, 100, 120])
+    ax.set_xticklabels([f"{x}" for x in [20, 40, 60, 80, 100, 120]])
+    ax.set_xlabel("Time [h]")
+
+    if file_path == "dare_False_session_False_v2.csv":
+        title = "Baseline FIFO"
+    elif file_path == "dare_True_session_False_v2.csv":
+        title = "DARE-DL"
+    elif file_path == "dare_False_session_True_v2.csv":
+        title = "Session FIFO"
+
+    ax.set_title("Task Allocation on GPUs - " + title)
 
     # Create custom legend with hatches
     legend_handles = []
@@ -166,6 +176,9 @@ def generate_gantt_gantt_executions(task_records):
     # Create the legend
     ax.legend(handles=legend_handles, title="Job types", loc='upper right', frameon=True)
 
+    plt.tight_layout()
+
+    plt.savefig(file_path + ".pdf")
     plt.show()
 
 # Example of how to call the function with dummy data
@@ -281,8 +294,9 @@ def gpus_usage(df, profiling = False):
 
     is_retrain = -1 not in list(df["Task_Retrain"].unique())
 
-    gpus_usage = []
+    gpus_usage = {}
     for gpu_id in range(1, 8):
+        gpus_usage[gpu_id] = 0
         gpu_df = df[df["GPU_ID"] == gpu_id]
         gpu_usage_base = gpu_df[df["Model_Name"] == "google/flan-t5-base"]["Training_Time"].sum()
         gpu_usage_small = gpu_df[df["Model_Name"] == "google/flan-t5-small"]["Training_Time"].sum()
@@ -293,8 +307,43 @@ def gpus_usage(df, profiling = False):
             gpu_usage_small = gpu_usage_small / 21.795236303013805
             gpu_usage_bart = gpu_usage_bart / 53.371237007832384
 
-        gpus_usage.append(gpu_usage_base + gpu_usage_small + gpu_usage_bart)
+        gpus_usage[gpu_id] = gpu_usage_base + gpu_usage_small + gpu_usage_bart
 
     
-    return gpus_usage
-        
+    return list(gpus_usage.values())
+
+def calculate_avg_jct(task_records):
+    """
+    Calculate the average job completion time (AvgJCT) from a DataFrame of task records.
+    
+    Parameters:
+    task_records (pd.DataFrame): A DataFrame with 'Arrival_Time' and 'End_Time' columns.
+    
+    Returns:
+    float: The average job completion time.
+    """
+    # Calculate completion times for each task
+    completion_times = task_records['End_Time'] - task_records['Arrival_Time']
+    
+    # Calculate the average completion time
+    avg_jct = completion_times.mean()
+    
+    return avg_jct
+
+def calculate_jct_std(task_records):
+    """
+    Calculate the standard deviation of job completion times (JCT) from a DataFrame of task records.
+    
+    Parameters:
+    task_records (pd.DataFrame): A DataFrame with 'Arrival_Time' and 'End_Time' columns.
+    
+    Returns:
+    float: The standard deviation of job completion times.
+    """
+    # Calculate completion times for each task
+    completion_times = task_records['End_Time'] - task_records['Arrival_Time']
+    
+    # Calculate the standard deviation of completion times
+    jct_std = completion_times.std(ddof=1)  # Using sample standard deviation
+    
+    return jct_std

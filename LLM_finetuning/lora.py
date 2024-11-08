@@ -13,10 +13,11 @@ data_files = {'train':'../data/train.csv','test':'../data/test.csv'}
 
 dataset = load_dataset('csv',data_files=data_files)
 
-model_name = "lucadiliello/flan-t5-base"
+# model_name = "lucadiliello/flan-t5-base"
 # google/flan-t5-base
 # google/flan-t5-small
-# lucadiliello/bart-small
+
+model_name = "lucadiliello/bart-small"
 
 
 save_model_name = model_name.split("/")[1]
@@ -53,7 +54,7 @@ trainingArgs = TrainingArguments(
     num_train_epochs=10,
     per_device_train_batch_size=4 if "large" not in model_name else 2,
     evaluation_strategy="steps",  # Run evaluation every few steps
-    eval_steps=1000,               # Validate every 500 steps
+    eval_steps=100,               # Validate every 500 steps
     save_strategy="epoch",        # Save checkpoint at the end of each epoch
     learning_rate=2e-4,
 )
@@ -88,7 +89,7 @@ trainer = SFTTrainer(
     packing=True,
     formatting_func=prompt_instruction_format,
     args=trainingArgs,
-    # callbacks=[loss_threshold_callback]  # Add custom callback here
+    callbacks=[loss_threshold_callback]  # Add custom callback here
 )
 
 trainer.train()
