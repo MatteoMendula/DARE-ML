@@ -142,6 +142,9 @@ def generate_gantt_gantt_executions(task_records, file_path):
             
     min_start_time = task_records['Start_Time'].min()
 
+    # draw a vertical line at x = 111 with lower z-order to make it appear behind the bars
+    ax.axvline(x=111, color='gray', linestyle='--', zorder=0)
+
     # Plot each task on the Gantt chart
     for _, row in task_records.iterrows():
         gpu_id = row['GPU_ID']
@@ -150,14 +153,16 @@ def generate_gantt_gantt_executions(task_records, file_path):
         name = row['Model_Name']
         color, hatch = get_color(name)
 
-        ax.barh(gpu_id, duration, left=start, color=color, edgecolor='black', hatch=hatch)
+        ax.barh(gpu_id, duration, left=start, color=color, edgecolor='black', hatch=hatch, zorder=3)
 
     # Configure chart
     ax.set_yticks(gpus)
     ax.set_yticklabels([f"GPU {gpu}" for gpu in gpus])
-    ax.set_xticks([20, 40, 60, 80, 100, 120])
-    ax.set_xticklabels([f"{x}" for x in [20, 40, 60, 80, 100, 120]])
+    ax.set_xticks([20, 40, 60, 80, 100, 120, 140])
+    ax.set_xticklabels([f"{x}" for x in [20, 40, 60, 80, 100, 120, 140]])
+    ax.set_xbound(0, 140)
     ax.set_xlabel("Time [h]")
+
 
     if file_path == "dare_False_session_False_v2.csv":
         title = "Baseline FIFO"
