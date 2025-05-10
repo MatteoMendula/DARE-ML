@@ -171,7 +171,7 @@ def generate_gantt_gantt_executions(task_records, file_path):
     elif file_path == "dare_False_session_True_v2.csv":
         title = "Session FIFO"
 
-    ax.set_title("Task Allocation on GPUs - " + title)
+    ax.set_title("Task Allocation on GPUs - " + title, fontsize=20, fontweight='bold')
 
     # Create custom legend with hatches
     legend_handles = []
@@ -179,7 +179,15 @@ def generate_gantt_gantt_executions(task_records, file_path):
         legend_handles.append(Patch(facecolor=color, edgecolor='black', label=label, hatch=hatch))
 
     # Create the legend
-    ax.legend(handles=legend_handles, title="Job types", loc='upper right', frameon=True)
+    ax.legend(handles=legend_handles, title="Job types", loc='upper right', frameon=True, fontsize=20)
+
+    # increase font size of axis labels
+    ax.xaxis.label.set_size(20)
+    ax.yaxis.label.set_size(20)
+
+    # increase font size of ticks
+    ax.tick_params(axis='x', labelsize=16)
+    ax.tick_params(axis='y', labelsize=16)
 
     plt.tight_layout()
 
